@@ -43,7 +43,7 @@ namespace Shadowsocks.View
             fontToolStripMenuItem.Text = I18N.GetString("&Font...");
             wrapTextToolStripMenuItem.Text = I18N.GetString("&Wrap Text");
             alwaysOnTopToolStripMenuItem.Text = I18N.GetString("&Always on top");
-            Text = I18N.GetString("Log Viewer");
+            this.Text = I18N.GetString("Log Viewer");
         }
 
         private void closeToolStripMenuItem_Click(object sender, EventArgs e)

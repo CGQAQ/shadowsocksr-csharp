@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Windows.Forms;
 using Shadowsocks.Controller;
@@ -65,6 +66,7 @@ namespace Shadowsocks.View
             int dpi_mul = Util.Utils.GetDpiMul();
 
             Configuration config = controller.GetCurrentConfiguration();
+
             if (config.configs.Count < 8)
             {
                 this.Height = 300 * dpi_mul / 4;
@@ -90,6 +92,8 @@ namespace Shadowsocks.View
                     new MenuItem("-"),
                     CreateMenuItem("Clear &Selected Total", new EventHandler(this.ClearSelectedTotal_Click)),
                     CreateMenuItem("Clear &Total", new EventHandler(this.ClearTotal_Click)),
+                    new MenuItem("-"),
+                    CreateMenuItem("&Ping All", new EventHandler(this.PingAll_Click)),
                 }),
                 CreateMenuGroup("Port &out", new MenuItem[] {
                     CreateMenuItem("Copy current link", new EventHandler(this.copyLinkItem_Click)),
@@ -121,6 +125,56 @@ namespace Shadowsocks.View
             this.Width = width + SystemInformation.VerticalScrollBarWidth + (this.Width - this.ClientSize.Width) + 1;
             ServerDataGrid.AutoResizeColumnHeadersHeight();
         }
+
+
+        private void PingALLThread(object exceptCur)
+        {
+            //Todo ping all function
+            Ping ping = new Ping();
+            using (ping)
+            {
+                Configuration config = controller.GetCurrentConfiguration();
+                for (int index = 0; index < ServerDataGrid.RowCount; index++)
+                {
+                    var configs = config.configs;
+                    var ip = configs[index].server;
+                    if (config.index == index && (bool)exceptCur)
+                    {
+                        //step over current item
+                        continue;
+                    }
+
+                    try
+                    {
+                        var pingReply = ping?.Send(ip);
+                        if (pingReply?.Status == IPStatus.Success)
+                        {
+                            ServerDataGrid[6, index].Value = pingReply.RoundtripTime;
+                        }
+                        else
+                        {
+                            ServerDataGrid[6, index].Value = I18N.GetString("Timeout");
+                        }
+                    }
+                    catch (PingException)
+                    {
+                        ServerDataGrid[6, index].Value = I18N.GetString("Error");
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
+
+                    }
+
+                }
+            }
+        }
+
+        // Ping all server in configuration
+        private void PingAll_Click(object sender, EventArgs e)
+        {
+            ThreadPool.QueueUserWorkItem(new WaitCallback(PingALLThread), false);
+        }
+
         private MenuItem CreateMenuGroup(string text, MenuItem[] items)
         {
             return new MenuItem(I18N.GetString(text), items);
@@ -636,6 +690,9 @@ namespace Shadowsocks.View
                 ServerDataGrid.FirstDisplayedScrollingRowIndex = Math.Max(0, config.index - ServerDataGrid.DisplayedRowCount(true) / 2);
                 firstDispley = false;
             }
+
+            //Original ping values are more precise
+            ThreadPool.QueueUserWorkItem(new WaitCallback(PingALLThread), true);
         }
 
         private void autosizeColumns()
